@@ -22,7 +22,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 # ╚══════════════════════════════════════════════════════╝
 
 TELEGRAM_BOT_TOKEN = "8688206596:AAFvt12_dhB27xovFTeeMQPf2aB2jHqHGqw"       # من @BotFather
-DEEPSEEK_API_KEY   = "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"    # من platform.deepseek.com
+DEEPSEEK_API_KEY   = "DarkAI-DeepAI-EFF939A9130A0ABAE3A7414D"    # من platform.deepseek.com
 ADMIN_ID           = 6918240643                      # معرفك من @userinfobot
 
 # ╔══════════════════════════════════════════════════════╗
