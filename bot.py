@@ -79,42 +79,51 @@ class GroqAI:
 
     @staticmethod
     async def chat(user_id: int, user_message: str) -> str:
-        """إرسال رسالة إلى Groq والحصول على رد مع حفظ السياق"""
+        """إرسال رسالة إلى API وحفظ السياق"""
+        import asyncio, requests as req
+
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+
+        personality = personalities.get(
+            user_personality.get(user_id, "🤖 مساعد عام"), BOT_PERSONALITY
+        )
+
+        conversation_history[user_id].append({"role": "user", "content": user_message})
+
+        # اقتطاع الذاكرة القديمة
+        if len(conversation_history[user_id]) > MAX_HISTORY * 2:
+            conversation_history[user_id] = conversation_history[user_id][-MAX_HISTORY * 2:]
+
+        # بناء السياق كنص
+        context = personality + "\n\n"
+        for msg in conversation_history[user_id]:
+            role = "المستخدم" if msg["role"] == "user" else "المساعد"
+            context += f"{role}: {msg['content']}\n"
+
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
-                api_key  = GROQ_API_KEY,
-                base_url = "https://api.groq.com/openai/v1"
-            )
+            def call_api():
+                r = req.post(
+                    "https://sii3.top/api/deepseek/api.php",
+                    data={"key": GROQ_API_KEY, "v3": context},
+                    timeout=60
+                )
+                try:
+                    return r.json().get("response", "") or r.text
+                except Exception:
+                    return r.text
 
-            if user_id not in conversation_history:
-                conversation_history[user_id] = []
+            reply = await asyncio.to_thread(call_api)
+            if not reply:
+                reply = "⚠️ لم يصل رد من الـ API."
 
-            personality = personalities.get(
-                user_personality.get(user_id, "🤖 مساعد عام"), BOT_PERSONALITY
-            )
-
-            conversation_history[user_id].append({"role": "user", "content": user_message})
-
-            # اقتطاع الذاكرة القديمة
-            if len(conversation_history[user_id]) > MAX_HISTORY * 2:
-                conversation_history[user_id] = conversation_history[user_id][-MAX_HISTORY * 2:]
-
-            resp = await client.chat.completions.create(
-                model    = GROQ_MODEL,
-                messages = [{"role": "system", "content": personality}] + conversation_history[user_id],
-                max_tokens  = MAX_TOKENS,
-                temperature = 0.7,
-            )
-
-            reply = resp.choices[0].message.content
             conversation_history[user_id].append({"role": "assistant", "content": reply})
             GroqAI._save_stats(user_id)
             return reply
 
         except Exception as e:
-            logger.error(f"Groq Error [{user_id}]: {e}")
-            return f"⚠️ *خطأ في الاتصال بـ Groq:*\n`{str(e)[:300]}`"
+            logger.error(f"API Error [{user_id}]: {e}")
+            return f"⚠️ *خطأ في الاتصال:*\n`{str(e)[:300]}`"
 
     @staticmethod
     async def analyze_image(user_id: int, image_b64: str, caption: str = "") -> str:
@@ -122,7 +131,7 @@ class GroqAI:
         try:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(
-                api_key  = GROQ_API_KEY,
+                api_key  = GROQ_API_KEY,  # unused
                 base_url = "https://api.groq.com/openai/v1"
             )
             prompt = caption if caption else "حلل هذه الصورة بالتفصيل واشرح ما تراه."
