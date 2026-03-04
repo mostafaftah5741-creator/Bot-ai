@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════╗
-║        🤖 بوت تيليجرام - DeepSeek AI                ║
+║        🤖 بوت تيليجرام - Groq AI                ║
 ╚══════════════════════════════════════════════════════╝
 التثبيت:
     pip install python-telegram-bot openai
@@ -22,19 +22,19 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 # ╚══════════════════════════════════════════════════════╝
 
 TELEGRAM_BOT_TOKEN = "8688206596:AAFvt12_dhB27xovFTeeMQPf2aB2jHqHGqw"       # من @BotFather
-DEEPSEEK_API_KEY   = "DarkAI-DeepAI-EFF939A9130A0ABAE3A7414D"    # من platform.deepseek.com
+GROQ_API_KEY = "DarkAI-DeepAI-EFF939A9130A0ABAE3A7414D"    # من console.groq.com
 ADMIN_ID           = 6918240643                      # معرفك من @userinfobot
 
 # ╔══════════════════════════════════════════════════════╗
 # ║          ⚙️  إعدادات يمكنك تعديلها                  ║
 # ╚══════════════════════════════════════════════════════╝
 
-DEEPSEEK_MODEL  = "deepseek-chat"   # أو "deepseek-reasoner" للتفكير العميق
+GROQ_MODEL  = "llama-3.3-70b-versatile"   # أو "llama-3.1-8b-instant" للسرعة
 MAX_HISTORY     = 20                # عدد الرسائل المحفوظة في الذاكرة
 MAX_TOKENS      = 2000              # طول الرد الأقصى
 BOT_NAME        = "مساعدي الذكي"
 
-BOT_PERSONALITY = """أنت مساعد ذكي ومفيد مدعوم بـ DeepSeek AI.
+BOT_PERSONALITY = """أنت مساعد ذكي ومفيد مدعوم بـ Groq AI.
 تتحدث العربية والإنجليزية بطلاقة تامة.
 أنت ودود، محترف، ودقيق في إجاباتك.
 تستخدم الإيموجي باعتدال."""
@@ -73,18 +73,18 @@ user_personality: dict = {}
 
 
 # ══════════════════════════════════════════════
-#           محرك DeepSeek AI
+#           محرك Groq AI
 # ══════════════════════════════════════════════
-class DeepSeekAI:
+class GroqAI:
 
     @staticmethod
     async def chat(user_id: int, user_message: str) -> str:
-        """إرسال رسالة إلى DeepSeek والحصول على رد مع حفظ السياق"""
+        """إرسال رسالة إلى Groq والحصول على رد مع حفظ السياق"""
         try:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(
-                api_key  = DEEPSEEK_API_KEY,
-                base_url = "https://api.deepseek.com"
+                api_key  = GROQ_API_KEY,
+                base_url = "https://api.groq.com/openai/v1"
             )
 
             if user_id not in conversation_history:
@@ -101,7 +101,7 @@ class DeepSeekAI:
                 conversation_history[user_id] = conversation_history[user_id][-MAX_HISTORY * 2:]
 
             resp = await client.chat.completions.create(
-                model    = DEEPSEEK_MODEL,
+                model    = GROQ_MODEL,
                 messages = [{"role": "system", "content": personality}] + conversation_history[user_id],
                 max_tokens  = MAX_TOKENS,
                 temperature = 0.7,
@@ -109,25 +109,25 @@ class DeepSeekAI:
 
             reply = resp.choices[0].message.content
             conversation_history[user_id].append({"role": "assistant", "content": reply})
-            DeepSeekAI._save_stats(user_id)
+            GroqAI._save_stats(user_id)
             return reply
 
         except Exception as e:
-            logger.error(f"DeepSeek Error [{user_id}]: {e}")
-            return f"⚠️ *خطأ في الاتصال بـ DeepSeek:*\n`{str(e)[:300]}`"
+            logger.error(f"Groq Error [{user_id}]: {e}")
+            return f"⚠️ *خطأ في الاتصال بـ Groq:*\n`{str(e)[:300]}`"
 
     @staticmethod
     async def analyze_image(user_id: int, image_b64: str, caption: str = "") -> str:
-        """تحليل صورة باستخدام DeepSeek Vision"""
+        """تحليل صورة باستخدام Groq Vision"""
         try:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(
-                api_key  = DEEPSEEK_API_KEY,
-                base_url = "https://api.deepseek.com"
+                api_key  = GROQ_API_KEY,
+                base_url = "https://api.groq.com/openai/v1"
             )
             prompt = caption if caption else "حلل هذه الصورة بالتفصيل واشرح ما تراه."
             resp = await client.chat.completions.create(
-                model = "deepseek-chat",
+                model = "llama-3.3-70b-versatile",
                 messages = [{
                     "role": "user",
                     "content": [
@@ -138,12 +138,12 @@ class DeepSeekAI:
                 max_tokens = MAX_TOKENS,
             )
             reply = resp.choices[0].message.content
-            DeepSeekAI._save_stats(user_id)
+            GroqAI._save_stats(user_id)
             return reply
         except Exception as e:
             logger.error(f"Vision Error [{user_id}]: {e}")
             # fallback إذا فشل تحليل الصورة
-            return await DeepSeekAI.chat(user_id,
+            return await GroqAI.chat(user_id,
                 f"لا أستطيع رؤية الصورة مباشرةً. {caption or 'هل يمكنك وصف ما تريد معرفته؟'}")
 
     @staticmethod
@@ -169,7 +169,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"👋 *أهلاً {user.first_name}!*\n\n"
         f"أنا *{BOT_NAME}* 🤖\n"
-        f"مدعوم بـ *DeepSeek AI* ✨\n\n"
+        f"مدعوم بـ *Groq AI* ✨\n\n"
         "*ما يمكنني فعله:*\n"
         "• 💬 محادثة ذكية مع حفظ السياق\n"
         "• 🖼️ تحليل الصور المرسلة\n"
@@ -244,8 +244,8 @@ async def cmd_info(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "ℹ️ *معلومات البوت:*\n\n"
         f"🤖 الاسم: *{BOT_NAME}*\n"
-        f"🧠 المزود: *DeepSeek AI*\n"
-        f"📦 النموذج: `{DEEPSEEK_MODEL}`\n"
+        f"🧠 المزود: *Groq AI*\n"
+        f"📦 النموذج: `{GROQ_MODEL}`\n"
         f"👥 إجمالي المستخدمين: *{len(user_stats)}*\n"
         f"💬 إجمالي الرسائل: *{total}*\n"
         f"🔄 محادثات نشطة: *{len(conversation_history)}*",
@@ -357,7 +357,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     logger.info(f"[{uid}] {update.effective_user.first_name}: {text[:80]}")
 
     await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
-    response = await DeepSeekAI.chat(uid, text)
+    response = await GroqAI.chat(uid, text)
 
     # تقسيم الرد إذا كان طويلاً
     for i in range(0, len(response), 4096):
@@ -379,7 +379,7 @@ async def handle_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         b64     = base64.b64encode(data).decode()
         caption = update.message.caption or ""
 
-        response = await DeepSeekAI.analyze_image(uid, b64, caption)
+        response = await GroqAI.analyze_image(uid, b64, caption)
         await processing_msg.edit_text(
             f"🖼️ *تحليل الصورة:*\n\n{response}",
             parse_mode="Markdown"
@@ -406,7 +406,7 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         raw  = await file.download_as_bytearray()
         text = raw.decode("utf-8", errors="ignore")[:5000]
         prompt   = f"اقرأ هذا الملف ({doc.file_name}) وقدم ملخصاً وتحليلاً له:\n\n{text}"
-        response = await DeepSeekAI.chat(uid, prompt)
+        response = await GroqAI.chat(uid, prompt)
         await processing_msg.edit_text(
             f"📋 *تحليل الملف ({doc.file_name}):*\n\n{response}",
             parse_mode="Markdown"
@@ -546,14 +546,14 @@ def main():
         print("❌ الخطأ: لم تضع TELEGRAM_BOT_TOKEN!")
         print("   افتح الملف وعدّل السطر:  TELEGRAM_BOT_TOKEN = '...' ")
         return
-    if "اكتب_مفتاح" in DEEPSEEK_API_KEY:
-        print("❌ الخطأ: لم تضع DEEPSEEK_API_KEY!")
-        print("   احصل عليه من: https://platform.deepseek.com")
+    if "اكتب_مفتاح" in GROQ_API_KEY:
+        print("❌ الخطأ: لم تضع GROQ_API_KEY!")
+        print("   احصل عليه من: https://console.groq.com")
         return
 
     print("""
 ╔══════════════════════════════════════╗
-║    🤖 DeepSeek Telegram Bot         ║
+║    🤖 Groq Telegram Bot         ║
 ║    جاري التشغيل...                  ║
 ╚══════════════════════════════════════╝
 """)
